@@ -43,13 +43,13 @@ async function appInit() {
 
   const sessionId = await AsyncStorage.getItem('sessionId')
   if (!sessionId) {
-    await db.executeSql("CREATE TABLE IF NOT EXISTS messages (content TEXT, isUser INTEGER);")
+    await db.executeSql("CREATE TABLE IF NOT EXISTS messages (content TEXT, date TEXT, isUser INTEGER);")
     await AsyncStorage.setItem('sessionId', (+(new Date())).toString(16))
   }
   
   const messages = (
     await query(db, "SELECT * FROM messages;")
-  ).map(({ content, isUser }) => [ content, !!isUser ])
+  ).map(({ content, date, isUser }) => [ content, date, !!isUser ])
 
   return { sessionId, messages }
 }
@@ -76,16 +76,17 @@ export default class App extends Component {
     console.log("DEBUG", JSON.stringify(messages))
 
     if (messages.length === 0) {
-      this.pushMessage("Olá! Em que posso ajudar?", false)
+      this.pushMessage("Olá! Em que posso ajudar?", false, "")
     }
   }
 
-  async onSendMessage(message) {
-    const { sessionId } = this.state
+  async onSendMessage() {
+    const { sessionId, inputText } = this.state
+    
+    this.setState({ inputText: "" })
+    await this.pushMessage(inputText, true)
 
-    await this.pushMessage(message, true)
-
-    const server_response = await dialogFlowSendMessage(message, sessionId)
+    const server_response = await dialogFlowClient.textRequest(inputText, sessionId)
 
     console.log(server_response)
 
@@ -94,11 +95,11 @@ export default class App extends Component {
   }
 
   async pushMessage(message, isUser) {
-    await db.executeSql(`INSERT INTO messages (content, isUser) VALUES ("${message}", ${+isUser})`)
+    await db.executeSql(`INSERT INTO messages (content, isUser) VALUES ("${message}", ${+isUser}, "${+new Date()}")`)
     this.setState({ messages: [ ...this.state.messages, [ message, isUser ] ] })
   }
 
-  renderMessage(message, isUser, i) {
+  renderMessage(message, isUser, date, i) {
     const messageStyle = {
       width: '60%',
       minWidth: 200,
@@ -131,7 +132,7 @@ export default class App extends Component {
           <Flex.Column>
             {
               this.state.messages.map(
-                ([ message, isUser ], i) => this.renderMessage(message, isUser, i)
+                ([ message, isUser, date ], i) => this.renderMessage(message, isUser, date, i)
               )
             }
           </Flex.Column>
@@ -139,9 +140,10 @@ export default class App extends Component {
         <Flex.Row style={{ height: 70, borderWidth: 1, borderStyle: 'solid', borderColor: '#e0e0e0' }}>
           <Flex.Column centerA flex>
             <TextInput underlineColorAndroid={Indigo} value={this.state.inputText} onChangeText={inputText => this.setState({ inputText })}
-              style={{ marginRight: 12, marginLeft: 6 }} placeholder="Digite sua mensagem..." />
+              style={{ marginRight: 12, marginLeft: 6 }} placeholder="Digite sua mensagem..." onSubmitEditing={() => this.onSendMessage()} />
           </Flex.Column>
-          <Fab containerStyle={{ position: 'relative' }} style={{ top: 25, left: 13, backgroundColor: Indigo }}>
+          <Fab containerStyle={{ position: 'relative' }} style={{ top: 25, left: 13, backgroundColor: Indigo }}
+            onPress={() => this.onSendMessage()}>
             <Icon name="send" />
           </Fab>
         </Flex.Row>
