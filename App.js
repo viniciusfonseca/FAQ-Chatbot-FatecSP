@@ -95,8 +95,9 @@ export default class App extends Component {
   }
 
   async pushMessage(message, isUser) {
-    await db.executeSql(`INSERT INTO messages (content, isUser) VALUES ("${message}", ${+isUser}, "${+new Date()}")`)
-    this.setState({ messages: [ ...this.state.messages, [ message, isUser ] ] })
+    const date = +new Date
+    await db.executeSql(`INSERT INTO messages (content, isUser) VALUES ("${message}", ${+isUser}, "${date}")`)
+    this.setState({ messages: [ ...this.state.messages, [ message, isUser, date ] ] })
   }
 
   renderMessage(message, isUser, date, i) {
