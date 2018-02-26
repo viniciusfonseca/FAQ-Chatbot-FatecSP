@@ -15,6 +15,8 @@ import {
 import accessToken from './accesstoken'
 import { ApiAiClient, ApiAiConstants } from 'api-ai-javascript'
 
+const Indigo = "#3F51B5"
+
 SQLite.enablePromise(true)
 SQLite.DEBUG(true)
 
@@ -117,7 +119,7 @@ export default class App extends Component {
   render() {
     return (
       <Container>
-        <Header>
+        <Header backgroundColor={Indigo}>
           <Body style={{ flex: 1 }}>
             <Title>FAQ Chatbot - FATEC SP</Title>
           </Body>
@@ -136,10 +138,10 @@ export default class App extends Component {
         </Content>
         <Flex.Row style={{ height: 70, borderWidth: 1, borderStyle: 'solid', borderColor: '#e0e0e0' }}>
           <Flex.Column centerA flex>
-            <TextInput value={this.state.inputText} onChangeText={inputText => this.setState({ inputText })}
+            <TextInput underlineColorAndroid={Indigo} value={this.state.inputText} onChangeText={inputText => this.setState({ inputText })}
               style={{ marginRight: 12, marginLeft: 6 }} placeholder="Digite sua mensagem..." />
           </Flex.Column>
-          <Fab containerStyle={{ position: 'relative' }} style={{ top: 25, left: 13 }}>
+          <Fab containerStyle={{ position: 'relative' }} style={{ top: 25, left: 13, backgroundColor: Indigo }}>
             <Icon name="send" />
           </Fab>
         </Flex.Row>
