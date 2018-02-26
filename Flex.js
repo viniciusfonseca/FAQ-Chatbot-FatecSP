@@ -16,7 +16,7 @@ const Column = ({ centerA, centerB, endA, flex, children, style = {} }) => {
     if (centerB) style.alignItems = 'center'
     if (endA) style.justifyContent = 'flex-end'
     if (flex) style.flex = 1
-    return <View style={{ style }}>{ children }</View>
+    return <View style={style}>{ children }</View>
 }
 
 export default { Row, Column }

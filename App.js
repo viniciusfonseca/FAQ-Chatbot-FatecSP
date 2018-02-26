@@ -1,31 +1,32 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- * @flow
- */
-
 import React, { Component } from 'react'
 import {
-  StyleSheet,
-  Text,
-  View,
-  Alert,
-  AsyncStorage
+  StyleSheet, Text, View,
+  Alert, AsyncStorage,
+  TextInput
 } from 'react-native'
 import Flex from './Flex'
 import SQLite from 'react-native-sqlite-storage'
-import { Container, Header, Left, Body, Right, Button, Icon, Title, Content } from 'native-base'
+import {
+  Container, Header, Left,
+  Body, Right, Button,
+  Icon, Title, Content,
+  Footer, Fab
+} from 'native-base'
 import accessToken from './accesstoken'
-import DialogFlowClient from 'api-ai'
+import { ApiAiClient, ApiAiConstants } from 'api-ai-javascript'
 
 SQLite.enablePromise(true)
+SQLite.DEBUG(true)
 
-const dialogFlowClient = new DialogFlowClient(accessToken)
+const dialogFlowClient = new ApiAiClient({
+  accessToken,
+  lang: ApiAiConstants.AVAILABLE_LANGUAGES.PT_BR
+})
 
 let db = null
 
 async function query(db, sql) {
-  let [qResult] = await db.executeSql(sql)
+  let [ qResult ] = await db.executeSql(sql)
   let rows = []
   for (let i = 0; i < qResult.rows.length; i++) {
       rows.push(qResult.rows.item(i))
@@ -34,31 +35,21 @@ async function query(db, sql) {
 }
 
 async function appInit() {
-  db = await SQLite.openDatabase({ name : "msgs.db", createFromLocation : "~msgs.db" })
+  db = await SQLite.openDatabase({
+    name : "msgs.db"
+  })
 
   const sessionId = await AsyncStorage.getItem('sessionId')
   if (!sessionId) {
-    await db.executeSql("CREATE TABLE messages content TEXT, isUser INTEGER;")
-
-    await AsyncStorage.setItem('sessionId', +(new Date()).toString(16))
+    await db.executeSql("CREATE TABLE IF NOT EXISTS messages (content TEXT, isUser INTEGER);")
+    await AsyncStorage.setItem('sessionId', (+(new Date())).toString(16))
   }
-
+  
   const messages = (
     await query(db, "SELECT * FROM messages;")
   ).map(({ content, isUser }) => [ content, !!isUser ])
 
-  return { sessionId }
-}
-
-function dialogFlowSendMessage(message, sessionId) {
-  return new Promise((resolve, reject) => {
-    const req = dialogFlowClient.textRequest(message, { sessionId })
-
-    req.on('response', response => resolve(response))
-    req.on('error', error => reject(error))
-
-    req.end()
-  })
+  return { sessionId, messages }
 }
 
 export default class App extends Component {
@@ -67,14 +58,24 @@ export default class App extends Component {
     sessionId: "",
     messages: [],
     sendingMessage: false,
-    receivingMessage: false
+    receivingMessage: false,
+    inputText: ""
   }
 
   async componentDidMount() {
-    const { sessionId, messages } = await appInit()
+
+    const {
+      sessionId,
+      messages
+    } = await appInit()
+
     this.setState({ sessionId, messages })
 
-    this.pushMessage("Olá! Em que posso ajudar?", false)
+    console.log("DEBUG", JSON.stringify(messages))
+
+    if (messages.length === 0) {
+      this.pushMessage("Olá! Em que posso ajudar?", false)
+    }
   }
 
   async onSendMessage(message) {
@@ -95,18 +96,19 @@ export default class App extends Component {
     this.setState({ messages: [ ...this.state.messages, [ message, isUser ] ] })
   }
 
-  renderMessage(message, isUser) {
+  renderMessage(message, isUser, i) {
     const messageStyle = {
       width: '60%',
-      minWidth: 300,
-      color: isUser ? '#FFF': '#000',
+      minWidth: 200,
       backgroundColor: isUser ? '#1E88E5' : '#90CAF9',
-      borderRadius: 15
+      borderRadius: 15,
+      margin: 8,
+      padding: 12
     }
     return (
-      <Flex.Row endA={isUser}>
+      <Flex.Row endA={isUser} key={'msg-'+i}>
         <View style={messageStyle}>
-          <Text>{ message }</Text>
+          <Text style={{ color: isUser ? '#FFF': '#000' }}>{ message }</Text>
         </View>
       </Flex.Row>
     )
@@ -127,11 +129,20 @@ export default class App extends Component {
           <Flex.Column>
             {
               this.state.messages.map(
-                ([ message, isUser ]) => renderMessage(message, isUser)
+                ([ message, isUser ], i) => this.renderMessage(message, isUser, i)
               )
             }
           </Flex.Column>
         </Content>
+        <Flex.Row style={{ height: 70, borderWidth: 1, borderStyle: 'solid', borderColor: '#e0e0e0' }}>
+          <Flex.Column centerA flex>
+            <TextInput value={this.state.inputText} onChangeText={inputText => this.setState({ inputText })}
+              style={{ marginRight: 12, marginLeft: 6 }} placeholder="Digite sua mensagem..." />
+          </Flex.Column>
+          <Fab containerStyle={{ position: 'relative' }} style={{ top: 25, left: 13 }}>
+            <Icon name="send" />
+          </Fab>
+        </Flex.Row>
       </Container>
     )
   }

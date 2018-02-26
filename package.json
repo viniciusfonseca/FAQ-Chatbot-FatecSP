@@ -13,6 +13,7 @@
     "react-native-sqlite-storage": "^3.3.4"
   },
   "devDependencies": {
+    "api-ai-javascript": "^2.0.0-beta.21",
     "babel-jest": "22.4.1",
     "babel-preset-react-native": "4.0.0",
     "jest": "22.4.2",
