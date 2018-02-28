@@ -2,18 +2,20 @@ import React, { Component } from 'react'
 import {
   StyleSheet, Text, View,
   Alert, AsyncStorage,
-  TextInput
+  TextInput, TouchableNativeFeedback,
+  ScrollView
 } from 'react-native'
 import Flex from './Flex'
 import SQLite from 'react-native-sqlite-storage'
 import {
   Container, Header, Left,
   Body, Right, Button,
-  Icon, Title, Content,
+  Icon, Title,
   Footer, Fab
 } from 'native-base'
 import accessToken from './accesstoken'
 import { ApiAiClient, ApiAiConstants } from 'api-ai-javascript'
+import moment from 'moment'
 
 const Indigo = "#3F51B5"
 
@@ -49,7 +51,7 @@ async function appInit() {
   
   const messages = (
     await query(db, "SELECT * FROM messages;")
-  ).map(({ content, date, isUser }) => [ content, date, !!isUser ])
+  ).map(({ content, date, isUser }) => [ content, !!isUser, date ])
 
   return { sessionId, messages }
 }
@@ -63,6 +65,8 @@ export default class App extends Component {
     receivingMessage: false,
     inputText: ""
   }
+
+  scrollView = null
 
   async componentDidMount() {
 
@@ -78,6 +82,8 @@ export default class App extends Component {
     if (messages.length === 0) {
       this.pushMessage("Olá! Em que posso ajudar?", false, "")
     }
+
+    setTimeout(() => this.scrollView.scrollToEnd(), 300)
   }
 
   async onSendMessage() {
@@ -86,18 +92,27 @@ export default class App extends Component {
     this.setState({ inputText: "" })
     await this.pushMessage(inputText, true)
 
-    const server_response = await dialogFlowClient.textRequest(inputText, sessionId)
+    this.setState({ receivingMessage: true })
 
-    console.log(server_response)
+    try {
+      const dialogBotResponse = await dialogFlowClient.textRequest(inputText)
 
-    // const response = ""
-    // this.pushMessage(response, false)
+      const speech = dialogBotResponse.result.fulfillment.speech
+
+      this.pushMessage(speech, false)
+    }
+    catch(e) {
+      console.log(e)
+      Alert.alert("Erro", "Houve um problema com a requisição. Tente novamente mais tarde.")
+    }
+
+    this.setState({ receivingMessage: false })    
   }
 
   async pushMessage(message, isUser) {
     const date = +new Date
-    await db.executeSql(`INSERT INTO messages (content, isUser) VALUES ("${message}", ${+isUser}, "${date}")`)
-    this.setState({ messages: [ ...this.state.messages, [ message, isUser, date ] ] })
+    await db.executeSql(`INSERT INTO messages (content, isUser, date) VALUES ("${message}", ${+isUser}, "${date}");`)
+    this.setState({ messages: [ ...this.state.messages, [ message, isUser, date ] ] }, () => setTimeout(() => this.scrollView.scrollToEnd(), 300))
   }
 
   renderMessage(message, isUser, date, i) {
@@ -111,11 +126,19 @@ export default class App extends Component {
     }
     return (
       <Flex.Row endA={isUser} key={'msg-'+i}>
-        <View style={messageStyle}>
-          <Text style={{ color: isUser ? '#FFF': '#000' }}>{ message }</Text>
-        </View>
+        <TouchableNativeFeedback>
+          <View style={messageStyle}>
+            <Text style={{ color: isUser ? '#FFF': '#000' }}>{ message }</Text>
+            <Text style={{ textAlign: isUser ? 'right' : 'left', fontStyle: 'italic', color: isUser? '#e0e0e0' : '#282828', fontSize: 10 }}>{ moment(+date).format("DD/MM/YYYY HH:mm") }</Text>
+          </View>
+        </TouchableNativeFeedback>
       </Flex.Row>
     )
+  }
+
+  async reset() {
+    await query(db, "DELETE FROM messages;")
+    await this.componentDidMount()
   }
 
   render() {
@@ -125,11 +148,11 @@ export default class App extends Component {
           <Body style={{ flex: 1 }}>
             <Title>FAQ Chatbot - FATEC SP</Title>
           </Body>
-          <Button rounded transparent>
-            <Icon name="information-circle" />
+          <Button rounded transparent onPress={() => this.reset()}>
+            <Text style={{ color: '#FFF' }}>RESET</Text>
           </Button>
         </Header>
-        <Content>
+        <ScrollView ref={scrollView => this.scrollView = scrollView}>
           <Flex.Column>
             {
               this.state.messages.map(
@@ -137,14 +160,14 @@ export default class App extends Component {
               )
             }
           </Flex.Column>
-        </Content>
+        </ScrollView>
         <Flex.Row style={{ height: 70, borderWidth: 1, borderStyle: 'solid', borderColor: '#e0e0e0' }}>
           <Flex.Column centerA flex>
             <TextInput underlineColorAndroid={Indigo} value={this.state.inputText} onChangeText={inputText => this.setState({ inputText })}
               style={{ marginRight: 12, marginLeft: 6 }} placeholder="Digite sua mensagem..." onSubmitEditing={() => this.onSendMessage()} />
           </Flex.Column>
-          <Fab containerStyle={{ position: 'relative' }} style={{ top: 25, left: 13, backgroundColor: Indigo }}
-            onPress={() => this.onSendMessage()}>
+          <Fab containerStyle={{ position: 'relative' }} style={{ top: 25, left: 13, backgroundColor: this.state.inputText.length > 0 ? Indigo : '#CCC' }}
+            onPress={() => this.state.inputText.length > 0 && this.onSendMessage()}>
             <Icon name="send" />
           </Fab>
         </Flex.Row>
