@@ -30,6 +30,7 @@ const dialogFlowClient = new ApiAiClient({
 let db = null
 
 async function query(db, sql) {
+  sql = sql.replace(/"/g, '""')
   let [ qResult ] = await db.executeSql(sql)
   let rows = []
   for (let i = 0; i < qResult.rows.length; i++) {
