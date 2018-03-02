@@ -46,7 +46,7 @@ async function appInit() {
 
   const sessionId = await AsyncStorage.getItem('sessionId')
   if (!sessionId) {
-    await db.executeSql("CREATE TABLE IF NOT EXISTS messages (content TEXT, date TEXT, isUser INTEGER);")
+    await query(db, "CREATE TABLE IF NOT EXISTS messages (content TEXT, date TEXT, isUser INTEGER);")
     await AsyncStorage.setItem('sessionId', (+(new Date())).toString(16))
   }
   
@@ -90,7 +90,7 @@ export default class App extends Component {
     console.log("DEBUG", JSON.stringify(messages))
 
     if (messages.length === 0) {
-      this.pushMessage("Olá! Em que posso ajudar?", false, "")
+      this.pushMessage("Olá! Em que posso ajudar?", false)
     }
 
     setTimeout(() => this.scrollView.scrollToEnd(), 300)
@@ -121,7 +121,7 @@ export default class App extends Component {
 
   async pushMessage(message, isUser) {
     const date = +new Date
-    await db.executeSql(`INSERT INTO messages (content, isUser, date) VALUES ("${message}", ${+isUser}, "${date}");`)
+    await query(db, `INSERT INTO messages (content, isUser, date) VALUES ('${message}', ${+isUser}, '${date}');`)
     this.setState({ messages: [ ...this.state.messages, [ message, isUser, date ] ] }, () => setTimeout(() => this.scrollView.scrollToEnd(), 300))
   }
 
