@@ -57,6 +57,15 @@ async function appInit() {
   return { sessionId, messages }
 }
 
+function confirm(title, message) {
+  return new Promise(resolve => {
+    Alert.alert(title, message, [
+      { text: 'OK', onPress: () => resolve(true) },
+      { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' }
+    ])
+  })
+}
+
 export default class App extends Component {
 
   state = {
@@ -138,6 +147,12 @@ export default class App extends Component {
   }
 
   async reset() {
+
+    const confirm_reset = await confirm("Aviso", "Deseja mesmo limpar o histórico de conversa? Essa ação não poderá ser desfeita.")
+    if (!confirm_reset) {
+      return
+    }
+
     await query(db, "DELETE FROM messages;")
     await this.componentDidMount()
   }
@@ -150,7 +165,7 @@ export default class App extends Component {
             <Title>FAQ Chatbot - FATEC SP</Title>
           </Body>
           <Button rounded transparent onPress={() => this.reset()}>
-            <Text style={{ color: '#FFF' }}>RESET</Text>
+            <Text style={{ color: '#FFF' }}>LIMPAR</Text>
           </Button>
         </Header>
         <ScrollView ref={scrollView => this.scrollView = scrollView}>
